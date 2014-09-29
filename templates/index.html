@@ -1,0 +1,241 @@
+<html>
+<body>
+<meta name="viewport" content="width=620" />
+<title>geolocation</title>
+<script type="text/javascript" src="http://maps.google.com/maps/api/js?v=3.exp&key=AIzaSyAnB0r7VFHq9O9xUjL5uxwnmyWJitsayk0"></script>
+    <article>
+      <p>Finding your location: <span id="status">checking...</span><div><a href='#docs'>see api doc</a></div></p>
+    </article>
+    <div>
+      <p>Raw Json Response</p>
+      <code id="raw"></code>
+      <div id="docs">
+<div id="readme" class="blob instapaper_body">
+
+<h1>Query Parameters</h1>
+
+<table>
+<thead><tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>longitude</td>
+<td>float</td>
+<td>Longitude component of location</td>
+</tr>
+<tr>
+<td>latitude</td>
+<td>float</td>
+<td>Latitude component of location</td>
+</tr>
+<tr>
+<td>radius(optional)</td>
+<td>float</td>
+<td>Search radius size in meters</td>
+</tr>
+</tbody>
+</table><h1>
+<a name="user-content-sample-request" class="anchor" href="#sample-request" aria-hidden="true"><span class="octicon octicon-link"></span></a>Sample Request</h1>
+
+<p>GET /predictions?lat=37.7538790&amp;long=-122.4349690</p>
+
+<h1>
+<a name="user-content-sample-response" class="anchor" href="#sample-response" aria-hidden="true"><span class="octicon octicon-link"></span></a>Sample Response</h1>
+
+<p>Status-Code: 200 OK</p>
+
+<pre><code>{
+  nearby_departures: [
+    {
+      route_name: "24-Divisadero",
+      longitude: -122.4346199,
+      directions: [
+        {
+          direction_name: "Outbound to the Bayview District",
+          predictions: [
+            3,
+            8,
+            21,
+            27,
+            37
+          ]
+        }
+      ],
+      latitude: 37.7560999,
+      stop_name: "Castro St &amp; 21st St"
+    },
+    {
+      route_name: "24-Divisadero",
+      longitude: -122.43448,
+      directions: [
+        {
+          direction_name: "Outbound to the Bayview District",
+          predictions: [
+              3,
+              9,
+              21,
+              27,
+              38
+          ]
+        }
+      ],
+      latitude: 37.75464,
+      stop_name: "Castro St &amp; 22nd St"
+    },
+    {
+      route_name: "24-Divisadero",
+      longitude: -122.4343199,
+      directions: [
+        {
+          direction_name: "Outbound to the Bayview District",
+          predictions: [
+              4,
+              9,
+              22,
+              28,
+              39
+          ]
+        }
+      ],
+      latitude: 37.7528999,
+      stop_name: "Castro St &amp; 23rd St"
+    }
+  ]
+}
+</code></pre>
+
+<table>
+<thead><tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>longitude</td>
+<td>float</td>
+<td>Longitude component of location</td>
+</tr>
+<tr>
+<td>latitude</td>
+<td>float</td>
+<td>Latitude component of location</td>
+</tr>
+<tr>
+<td>stop_name</td>
+<td>string</td>
+<td>Human-readable name of the stop</td>
+</tr>
+<tr>
+<td>route_name</td>
+<td>string</td>
+<td>Human-readable name of the route</td>
+</tr>
+<tr>
+<td>direction_name</td>
+<td>string</td>
+<td>Human-readable name of the route direction</td>
+</tr>
+<tr>
+<td>predictions</td>
+<td>array of int</td>
+<td>List of prediction times in minutes</td>
+</tr>
+</tbody>
+</table>
+  </div>
+
+
+      </div>
+    <div>
+<script>
+function attachInfoMessage(marker, message) {
+  var infowindow = new google.maps.InfoWindow({
+    content: message
+  });
+
+  google.maps.event.addListener(marker, 'click', function() {
+    infowindow.open(marker.get('map'), marker);
+  });
+}
+
+function success(position) {
+  var s = document.querySelector('#status');
+  
+  s.innerHTML = "found you!";
+  s.className = 'success';
+  
+  var mapcanvas = document.createElement('div');
+  mapcanvas.id = 'mapcanvas';
+  mapcanvas.style.height = '400px';
+  mapcanvas.style.width = '560px';
+    
+  document.querySelector('article').appendChild(mapcanvas);
+  
+  var latlng = new google.maps.LatLng(position.coords.latitude, position.coords.longitude);
+  var myOptions = {
+    zoom: 15,
+    center: latlng,
+    mapTypeControl: false,
+    navigationControlOptions: {style: google.maps.NavigationControlStyle.SMALL},
+    mapTypeId: google.maps.MapTypeId.ROADMAP
+  };
+  var map = new google.maps.Map(document.getElementById("mapcanvas"), myOptions);
+  
+  var marker = new google.maps.Marker({
+      position: latlng, 
+      map: map, 
+      title:"You are here! (at least within a "+position.coords.accuracy+" meter radius)"
+  });
+
+  var xhr = new XMLHttpRequest();
+  xhr.open("GET","predictions?longitude="+position.coords.longitude+"&latitude="+position.coords.latitude,true);
+  xhr.setRequestHeader("Content-Type","application/json");
+  xhr.addEventListener('load',function(){
+    if(xhr.status === 200){
+      document.getElementById('raw').innerText = xhr.response;
+      var stops = JSON.parse(xhr.response)['nearby_departures'];
+      for(var i in stops) {
+        var stop = stops[i];
+        var stopLatLong = new google.maps.LatLng(stop['latitude'],stop['longitude']); 
+        var contentString = "<b>"+""+stop['route_name']+" - "+stop['stop_name']+":</b><br>";
+        var directions = "";
+        for(var j in stop['directions']) {
+          var direction = stop['directions'][j];
+          directions += direction['direction_name'] + ": in " + direction['predictions'].join(", ") + " mins<br>"; 
+        }
+        contentString += directions;
+        
+        var stopMarker = new google.maps.Marker({
+          position: stopLatLong, 
+          map: map, 
+          icon: "static/images/bus.png",
+          title: ""+stop['route_name']+" - "+stop['stop_name'],
+        });
+        attachInfoMessage(stopMarker, contentString);
+      }
+    }
+  },false); 
+  xhr.send();
+
+}
+
+function error(msg) {
+  var s = document.querySelector('#status');
+  s.innerHTML = typeof msg == 'string' ? msg : "failed";
+  s.className = 'fail';
+  
+}
+
+if (navigator.geolocation) {
+  navigator.geolocation.getCurrentPosition(success, error);
+} else {
+  error('not supported');
+}
+
+</script>
+</body>
+</html>
